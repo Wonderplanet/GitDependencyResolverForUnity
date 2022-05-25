@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEditor;
+using UnityEditor.Compilation;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GitDependencyResolver.EditorTests")]
@@ -31,7 +33,30 @@ namespace Coffee.GitDependencyResolver
         {
             Log("Init");
 
-            EditorApplication.projectChanged += StartResolve;
+            CompilationPipeline.assemblyCompilationFinished += (s, messages) =>
+            {
+                if (messages.Any(message => message.type == CompilerMessageType.Error))
+                {
+                    Client.Resolve();   
+                }
+            };
+
+            Events.registeringPackages += args =>
+            {
+                if (args.added.Any())
+                {
+                    StartResolve();
+                }
+            };
+
+            Events.registeredPackages += args =>
+            {
+                if (args.removed.Any())
+                {
+                    Client.Resolve();
+                }
+            };
+
             StartResolve();
         }
 
